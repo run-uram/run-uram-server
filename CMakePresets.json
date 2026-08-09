@@ -1,0 +1,250 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/${presetName}",
+            "cacheVariables": {
+                "ENABLE_TESTING": "ON",
+                "CMAKE_CXX_STANDARD": "20",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -DSPDLOG_ACTIVE_LEVEL=0",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_RUNTIME_OUTPUT_DIRECTORY": "${sourceDir}/bin",
+                "CMAKE_LIBRARY_OUTPUT_DIRECTORY": "${sourceDir}/lib",
+                "CPACK_PACKAGE_DIRECTORY": "${sourceDir}/packages",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_EXE_LINKER_FLAGS": "-static",
+                "VCPKG_MANIFEST_INSTALL": "ON"
+            }
+        },
+        {
+            "name": "base-gcc-armhf",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "arm-linux-gnueabihf-gcc",
+                "CMAKE_CXX_COMPILER": "arm-linux-gnueabihf-g++",
+                "CPACK_DEBIAN_PACKAGE_ARCHITECTURE": "armhf"
+            }
+        },
+        {
+            "name": "base-gcc-arm64",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "aarch64-linux-gnu-gcc",
+                "CMAKE_CXX_COMPILER": "aarch64-linux-gnu-g++",
+                "CPACK_DEBIAN_PACKAGE_ARCHITECTURE": "arm64"
+            }
+        },
+        {
+            "name": "base-gcc-amd64",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++",
+                "CPACK_DEBIAN_PACKAGE_ARCHITECTURE": "amd64"
+            }
+        },
+        {
+            "name": "base-debug-armhf",
+            "hidden": true,
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "VCPKG_TARGET_TRIPLET": "custom-armhf-linux-debug"
+            }
+        },
+        {
+            "name": "base-debug-arm64",
+            "hidden": true,
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "VCPKG_TARGET_TRIPLET": "custom-arm64-linux-debug"
+            }
+        },
+        {
+            "name": "base-debug-amd64",
+            "hidden": true,
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "base-release-armhf",
+            "hidden": true,
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_TESTING": "OFF",
+                "VCPKG_TARGET_TRIPLET": "custom-armhf-linux-release"
+            }
+        },
+        {
+            "name": "base-release-arm64",
+            "hidden": true,
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "VCPKG_TARGET_TRIPLET": "custom-arm64-linux-release"
+            }
+        },
+        {
+            "name": "base-release-amd64",
+            "hidden": true,
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_TESTING": "OFF"
+            }
+        },
+        {
+            "name": "base-native",
+            "hidden": true,
+            "cacheVariables": {
+                "CPACK_DEBIAN_PACKAGE_ARCHITECTURE": "amd64"
+            }
+        },
+        {
+            "name": "base-debug-native",
+            "hidden": true,
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BUILD_TESTING": "ON",
+                "VCPKG_TARGET_TRIPLET": "x64-linux"
+            }
+        },
+        {
+            "name": "native-debug",
+            "inherits": [
+                "base-native",
+                "base-debug-native"
+            ]
+        },
+        {
+            "name": "gcc-debug-armhf",
+            "inherits": [
+                "base-gcc-armhf",
+                "base-debug-armhf"
+            ]
+        },
+        {
+            "name": "gcc-release-armhf",
+            "inherits": [
+                "base-gcc-armhf",
+                "base-release-armhf"
+            ]
+        },
+        {
+            "name": "gcc-debug-arm64",
+            "inherits": [
+                "base-gcc-arm64",
+                "base-debug-arm64"
+            ]
+        },
+        {
+            "name": "gcc-release-arm64",
+            "inherits": [
+                "base-gcc-arm64",
+                "base-release-arm64"
+            ]
+        },
+        {
+            "name": "gcc-debug-amd64",
+            "inherits": [
+                "base-gcc-amd64",
+                "base-debug-amd64"
+            ]
+        },
+        {
+            "name": "gcc-release-amd64",
+            "inherits": [
+                "base-gcc-amd64",
+                "base-release-amd64"
+            ]
+        },
+        {
+            "name": "Custom configure preset",
+            "displayName": "Custom configure preset",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "gcc-debug-armhf",
+            "configurePreset": "gcc-debug-armhf"
+        },
+        {
+            "name": "gcc-release-armhf",
+            "configurePreset": "gcc-release-armhf"
+        },
+        {
+            "name": "gcc-debug-arm64",
+            "configurePreset": "gcc-debug-arm64"
+        },
+        {
+            "name": "gcc-release-arm64",
+            "configurePreset": "gcc-release-arm64"
+        },
+        {
+            "name": "gcc-debug-amd64",
+            "configurePreset": "gcc-debug-amd64"
+        },
+        {
+            "name": "gcc-release-amd64",
+            "configurePreset": "gcc-release-amd64"
+        }
+    ],
+    "packagePresets": [
+        {
+            "name": "armhf-deb",
+            "configurePreset": "gcc-release-armhf",
+            "generators": [
+                "DEB"
+            ]
+        },
+        {
+            "name": "arm64-deb",
+            "configurePreset": "gcc-release-arm64",
+            "generators": [
+                "DEB"
+            ]
+        },
+        {
+            "name": "amd64-deb",
+            "configurePreset": "gcc-release-amd64",
+            "generators": [
+                "DEB"
+            ]
+        }
+    ]
+}

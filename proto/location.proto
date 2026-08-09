@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package location;
+
+message LocationPoint {
+  double latitude = 1;
+  double longitude = 2;
+  double altitude = 3;
+  float speed = 4;
+  float heading = 5;
+  float accuracy = 6;
+  int64 timestamp = 7;
+  float accelerometer_z = 8;
+  bool is_mock = 9;
+}
+
+message H3Cell {
+  uint64 index = 1;
+  int32 resolution = 2;
+}

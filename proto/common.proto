@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package common;
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1;
+  STATUS_UNAUTHORIZED = 2;
+  STATUS_INVALID_DATA = 3;
+  STATUS_GPS_ACCURACY_LOW = 4;
+  STATUS_SPEED_LIMIT_EXCEEDED = 5;
+  STATUS_SERVER_ERROR = 6;
+}

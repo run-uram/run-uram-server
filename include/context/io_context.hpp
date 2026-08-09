@@ -1,0 +1,29 @@
+#pragma once
+
+#include <vector>
+#include <thread>
+
+#include "common.hpp"
+
+namespace context
+{
+
+class IOContext
+{
+private:
+    net::io_context m_io_context;
+    unsigned int m_thread_pool_size;
+
+public:
+    explicit IOContext(unsigned int thread_pool_size = std::thread::hardware_concurrency());
+
+    IOContext(const IOContext&) = delete;
+    IOContext& operator=(const IOContext&) = delete;
+
+    void Run();
+    void Stop();
+
+    net::io_context& GetIOContext() noexcept { return m_io_context; }
+};
+
+} // namespace context

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package runuram.proto;
+
+import "telemetry.proto";
+import "events.proto";
+
+message Envelope {
+  oneof payload {
+    telemetry.LocationFrame location_frame = 1;
+    telemetry.LocationFrameAck location_frame_ack = 2;
+    events.StartRunRequest start_run_request = 3;
+    events.StartRunResponse start_run_response = 4;
+    events.FinishRunRequest finish_run_request = 5;
+    events.FinishRunResponse finish_run_response = 6;
+  }
+}

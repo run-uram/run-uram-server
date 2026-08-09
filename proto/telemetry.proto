@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package telemetry;
+
+import "location.proto";
+import "common.proto";
+
+message LocationFrame {
+  location.LocationPoint point = 1; // GPS-данные
+  int64 sequence_number = 2; // Порядковый номер пакета (1, 2, 3...)
+}
+
+message LocationFrameAck {
+  common.Status status = 1; // Валидна ли точка (не счел ли сервер за чит)
+  location.H3Cell current_cell = 2; // В каком гексагоне сейчас находится игрок
+  double total_distance_meters = 3; // Валидированная сервером дистанция
+  int64 total_duration_seconds = 4; // Длительность пробежки
+}

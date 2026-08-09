@@ -1,0 +1,49 @@
+#pragma once
+
+#include <memory>
+#include <thread>
+
+#include "context/io_context.hpp"
+#include "context/work_context.hpp"
+#include "context/ssl_context.hpp"
+
+#include "logger/logger.hpp"
+
+namespace context
+{
+
+class Context
+{
+private:
+    IOContext m_io_context;
+    WorkContext m_work_context;
+    net::signal_set m_signals;
+    
+    std::unique_ptr<SSLContext> m_ssl_context;
+
+private:
+    void InitSignals();
+
+public:
+    explicit Context(
+        unsigned int io_threads = std::thread::hardware_concurrency(),
+        unsigned int work_threads = std::thread::hardware_concurrency()
+    );
+
+    ~Context() = default;
+
+    Context(const Context&) = delete;
+    Context& operator=(const Context&) = delete;
+
+    bool EnableSSL();
+
+    IOContext& GetIOContext() noexcept { return m_io_context; }
+    WorkContext& GetWorkContext() noexcept { return m_work_context; }
+    SSLContext* GetSSLContext() noexcept { return m_ssl_context.get(); }
+    const SSLContext* GetSSLContext() const noexcept { return m_ssl_context.get(); }
+
+    void Run();
+    void Stop();
+};
+
+} // namespace context
