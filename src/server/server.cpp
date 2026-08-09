@@ -16,7 +16,7 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
 
     LOG_INFO("--- {} ---", config::ServerConfig::GetServerName());
     LOG_INFO("Version: {}", config::ServerConfig::GetServerVersion());
-    
+
     if (server_config.IsSSLEnabled())
     {
         m_context.EnableSSL();
@@ -27,7 +27,7 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
     if (m_context.GetSSLContext())
     {
         net::co_spawn(
-            m_context.GetIOContext().GetIOContext(),
+            m_context.GetLowerLayourIOContext(),
             ListenHttps(network_config.https_port),
             net::detached
         );
@@ -35,7 +35,7 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
     else
     {
         net::co_spawn(
-            m_context.GetIOContext().GetIOContext(),
+            m_context.GetLowerLayourIOContext(),
             ListenHttp(network_config.http_port),
             net::detached
         );
@@ -86,13 +86,18 @@ net::awaitable<void> Server::ListenHttp(unsigned short port)
 
         net::co_spawn(
             net::make_strand(executor),
-            [s = std::move(socket), http_ctrl = m_controller.GetHttpController(), proto_ctrl = m_controller.GetProtobufController(), mgr = m_session_manager]() mutable -> net::awaitable<void> {
+            [socket = std::move(socket), 
+             http_controller  = m_controller.GetHttpController(), 
+             proto_controller = m_controller.GetProtobufController(), 
+             session_manager  = m_session_manager]() mutable -> net::awaitable<void>
+            {
                 auto session = std::make_shared<HttpSession<beast::tcp_stream>>(
-                    beast::tcp_stream(std::move(s)),
-                    std::move(http_ctrl),
-                    std::move(proto_ctrl),
-                    std::move(mgr)
+                    beast::tcp_stream(std::move(socket)),
+                    std::move(http_controller),
+                    std::move(proto_controller),
+                    std::move(session_manager)
                 );
+
                 co_await session->Run();
             },
             net::detached
@@ -151,13 +156,19 @@ net::awaitable<void> Server::ListenHttps(unsigned short port)
 
         net::co_spawn(
             net::make_strand(executor),
-            [s = std::move(socket), ssl_ctx = &ssl_context_ptr->GetSSLContext(), http_ctrl = m_controller.GetHttpController(), proto_ctrl = m_controller.GetProtobufController(), mgr = m_session_manager]() mutable -> net::awaitable<void> {
+            [socket = std::move(socket),
+             ssl_context = &ssl_context_ptr->GetSSLContext(),
+             http_controller = m_controller.GetHttpController(),
+             proto_controller = m_controller.GetProtobufController(),
+             session_manager = m_session_manager]() mutable -> net::awaitable<void>
+            {
                 auto session = std::make_shared<HttpSession<beast::ssl_stream<beast::tcp_stream>>>(
-                    beast::ssl_stream<beast::tcp_stream>(beast::tcp_stream(std::move(s)), *ssl_ctx),
-                    std::move(http_ctrl),
-                    std::move(proto_ctrl),
-                    std::move(mgr)
+                    beast::ssl_stream<beast::tcp_stream>(beast::tcp_stream(std::move(socket)), *ssl_context),
+                    std::move(http_controller),
+                    std::move(proto_controller),
+                    std::move(session_manager)
                 );
+
                 co_await session->Run();
             },
             net::detached

@@ -38,6 +38,8 @@ public:
     bool EnableSSL();
 
     IOContext& GetIOContext() noexcept { return m_io_context; }
+    net::io_context& GetLowerLayourIOContext() noexcept { return m_io_context.GetIOContext(); }
+
     WorkContext& GetWorkContext() noexcept { return m_work_context; }
     SSLContext* GetSSLContext() noexcept { return m_ssl_context.get(); }
     const SSLContext* GetSSLContext() const noexcept { return m_ssl_context.get(); }
