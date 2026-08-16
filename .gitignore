@@ -41,6 +41,8 @@
 report
 .PVS-Studio
 *packages
+*vcpkg_installed
+*venv
 .env
 
 # Auto generated files

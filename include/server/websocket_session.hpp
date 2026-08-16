@@ -98,8 +98,14 @@ public:
     {
         if (m_session_manager && m_user_id != 0)
         {
-            m_session_manager->RemoveSession(m_user_id);
+            m_session_manager->RemoveSession(m_user_id, this);
         }
+    }
+
+    void Close() override
+    {
+        beast::error_code ec;
+        beast::get_lowest_layer(m_ws).socket().close(ec);
     }
 
     template <typename Body, typename Allocator>

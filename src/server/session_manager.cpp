@@ -6,14 +6,34 @@ namespace server::session
 
 void SessionManager::AddSession(uint64_t user_id, std::shared_ptr<UserSession> session)
 {
-    std::unique_lock lock(m_mutex);
-    m_session[user_id] = std::move(session);
+    std::shared_ptr<UserSession> old_session;
+    {
+        std::unique_lock lock(m_mutex);
+        auto it = m_session.find(user_id);
+        if (it != m_session.end())
+        {
+            old_session = std::move(it->second);
+        }
+        m_session[user_id] = std::move(session);
+    }
+
+    if (old_session)
+    {
+        old_session->Close();
+    }
 }
 
-void SessionManager::RemoveSession(uint64_t user_id)
+void SessionManager::RemoveSession(uint64_t user_id, const UserSession* session)
 {
     std::unique_lock lock(m_mutex);
-    m_session.erase(user_id);
+    auto it = m_session.find(user_id);
+    if (it != m_session.end())
+    {
+        if (session == nullptr || it->second.get() == session)
+        {
+            m_session.erase(it);
+        }
+    }
 }
 
 std::shared_ptr<UserSession> SessionManager::GetSession(uint64_t user_id) const

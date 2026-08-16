@@ -34,7 +34,7 @@ public:
     SessionManager& operator=(const SessionManager&) = delete;
 
     void AddSession(uint64_t user_id, std::shared_ptr<UserSession> session);
-    void RemoveSession(uint64_t user_id);
+    void RemoveSession(uint64_t user_id, const UserSession* session = nullptr);
 
     std::shared_ptr<UserSession> GetSession(uint64_t user_id) const;
 

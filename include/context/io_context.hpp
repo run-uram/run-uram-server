@@ -13,6 +13,7 @@ class IOContext
 private:
     net::io_context m_io_context;
     unsigned int m_thread_pool_size;
+    net::executor_work_guard<net::io_context::executor_type> m_work_guard;
 
 public:
     explicit IOContext(unsigned int thread_pool_size = std::thread::hardware_concurrency());

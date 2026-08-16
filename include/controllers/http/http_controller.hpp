@@ -2,13 +2,20 @@
 
 #include "common.hpp"
 
+#include "services/auth_service.hpp"
+
 namespace controller
 {
 
 class HttpController
 {
+private:
+    std::shared_ptr<service::AuthService> m_auth_service;
+
 public:
-    HttpController() = default;
+    explicit HttpController(std::shared_ptr<service::AuthService> auth_service)
+            : m_auth_service(std::move(auth_service)) {}
+    
     ~HttpController() = default;
 
     HttpController(const HttpController&) = delete;

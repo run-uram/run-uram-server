@@ -29,6 +29,18 @@ public:
     {
         boost::asio::post(m_thread_pool, std::forward<F>(f));
     }
+
+    template <typename F>
+    auto AsyncPost(F&& f)
+    {
+        return boost::asio::co_spawn(
+            m_thread_pool.get_executor(),
+            [f = std::forward<F>(f)]() mutable -> boost::asio::awaitable<std::invoke_result_t<F>> {
+                co_return f();
+            },
+            boost::asio::use_awaitable
+        );
+    }
 };
 
 } // namespace context

@@ -4,10 +4,20 @@
 #include <thread>
 
 #include "common.hpp"
-
 #include "context/context.hpp"
 #include "controllers/controller.hpp"
 #include "server/session_manager.hpp"
+
+namespace repository
+{
+class IUserRepository;
+class IRedisRepository;
+}
+
+namespace service
+{
+class AuthService;
+}
 
 namespace server
 {
@@ -16,6 +26,9 @@ class Server
 {
 private:
     context::Context m_context;
+    std::shared_ptr<repository::IUserRepository> m_user_repository;
+    std::shared_ptr<repository::IRedisRepository> m_redis_repository;
+    std::shared_ptr<service::AuthService> m_auth_service;
     controller::Controller m_controller;
     std::shared_ptr<session::SessionManager> m_session_manager;
 
