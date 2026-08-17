@@ -13,7 +13,7 @@ static std::string GetEnvOr(const char* name, const std::string& fallback)
 }
 
 RedisRepository::RedisRepository(net::any_io_executor executor)
-    : m_connection(std::make_shared<boost::redis::connection>(executor))
+    : m_connection(std::make_shared<boost::redis::connection>(net::make_strand(executor)))
 {
     boost::redis::config config;
     config.addr.host = GetEnvOr("REDIS_HOST", "127.0.0.1");
@@ -43,15 +43,12 @@ net::awaitable<bool> RedisRepository::Set(const std::string& key, const std::str
     co_await m_connection->async_exec(
         request, 
         response, 
-        net::bind_executor(
-            m_connection->get_executor(),
-            net::cancel_after(std::chrono::seconds(3), net::redirect_error(net::use_awaitable, ec))
-        )
+        net::cancel_after(std::chrono::seconds(3), net::redirect_error(net::use_awaitable, ec))
     );
 
     if (ec)
     {
-        LOG_ERROR("Redis SET for key {} failed {}", key, ec.message());
+        LOG_ERROR("Redis SET for key {} failed: {}", key, ec.message());
         co_return false;
     }
 
@@ -69,10 +66,7 @@ net::awaitable<std::optional<std::string>> RedisRepository::Get(const std::strin
     co_await m_connection->async_exec(
         request, 
         response, 
-        net::bind_executor(
-            m_connection->get_executor(), 
-            net::redirect_error(net::use_awaitable, ec)
-        )
+        net::cancel_after(std::chrono::seconds(3), net::redirect_error(net::use_awaitable, ec))
     );
 
     if (ec)
@@ -103,10 +97,7 @@ net::awaitable<bool> RedisRepository::Delete(const std::string& key)
     co_await m_connection->async_exec(
         request, 
         response, 
-        net::bind_executor(
-            m_connection->get_executor(), 
-            net::redirect_error(net::use_awaitable, ec)
-        )
+        net::cancel_after(std::chrono::seconds(3), net::redirect_error(net::use_awaitable, ec))
     );
 
     if (ec)
