@@ -1,14 +1,13 @@
 # Run Uram Server
 
-# RunУрам Backend
-
 ## Быстрый старт
 
 1. Скопируйте и настройте переменные окружения:
 ```bash
-cp .env.example .env
+    cp .env.example .env
+```
 
 2. Соберите и запустите контейнеры:
+```bash
    docker compose up --build -d
-
-По умолчанию сервис будет доступен по адресу http://localhost:8081.
+```
