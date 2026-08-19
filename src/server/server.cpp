@@ -1,15 +1,5 @@
 #include "server/server.hpp"
 
-#include "config/config.hpp"
-#include "logger/logger.hpp"
-#include "server/http_session.hpp"
-#include "repository/postgres_user_repository.hpp"
-#include "repository/redis_repository.hpp"
-#include "repository/connection_pool.hpp"
-#include "services/auth_service.hpp"
-#include "controllers/http/http_controller.hpp"
-#include "controllers/protobuf/protobuf_controller.hpp"
-
 namespace server
 {
 
@@ -68,6 +58,8 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
             net::detached
         );
     }
+
+    InitProtobufRouter();
 }
 
 net::awaitable<void> Server::ListenHttp(unsigned short port)
@@ -210,6 +202,26 @@ net::awaitable<void> Server::ListenHttps(unsigned short port)
             net::detached
         );
     }
+}
+
+void Server::InitProtobufRouter()
+{
+    auto run_service = std::make_shared<service::RunService>(m_redis_repository, m_user_repository);
+
+    m_controller.GetProtobufController()->RegisterHandler<controller::StartRunHandler>(
+        runuram::proto::Envelope::kStartRunRequest, 
+        run_service
+    );
+
+    m_controller.GetProtobufController()->RegisterHandler<controller::LocationBatchHandler>(
+        runuram::proto::Envelope::kLocationBatch, 
+        run_service
+    );
+
+    // m_controller.GetProtobufController()->RegisterHandler<FinishRunHandler>(
+    //     runuram::proto::Envelope::kFinishRunRequest, 
+    //     run_service
+    // );
 }
 
 void Server::Run()

@@ -1,4 +1,4 @@
 target_sources(${PROJECT_NAME}_lib PRIVATE
-    auth_service.cpp
-    run_service.cpp
+    location_batch.cpp
+    start_run.cpp
 )

@@ -5,13 +5,14 @@ package telemetry;
 import "location.proto";
 import "common.proto";
 
-message LocationFrame {
-  location.LocationPoint point = 1; // GPS-данные
-  int64 sequence_number = 2; // Порядковый номер пакета (1, 2, 3...)
+message LocationBatch {
+  uint64 run_id = 1;
+  int64 sequence_number = 2;  // Порядковый номер пакета (1, 2, 3...)
+  repeated location.LocationPoint points = 3;  // Массив GPS-данных
 }
 
-message LocationFrameAck {
-  common.Status status = 1; // Валидна ли точка (не счел ли сервер за чит)
+message LocationBatchAck {
+  common.Status status = 1; // Валидна ли точка
   location.H3Cell current_cell = 2; // В каком гексагоне сейчас находится игрок
   double total_distance_meters = 3; // Валидированная сервером дистанция
   int64 total_duration_seconds = 4; // Длительность пробежки

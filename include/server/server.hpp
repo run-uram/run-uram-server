@@ -4,9 +4,25 @@
 #include <thread>
 
 #include "common.hpp"
+
+#include "config/config.hpp"
+#include "logger/logger.hpp"
+
 #include "context/context.hpp"
-#include "controllers/controller.hpp"
+
 #include "server/session_manager.hpp"
+#include "server/http_session.hpp"
+
+#include "repository/postgres_user_repository.hpp"
+#include "repository/redis_repository.hpp"
+#include "repository/connection_pool.hpp"
+
+#include "services/auth_service.hpp"
+#include "services/run_service.hpp"
+
+#include "controllers/controller.hpp"
+#include "controllers/protobuf/start_run.hpp"
+#include "controllers/protobuf/location_batch.hpp"
 
 namespace repository
 {
@@ -35,6 +51,8 @@ private:
 private:
     net::awaitable<void> ListenHttp(unsigned short port);
     net::awaitable<void> ListenHttps(unsigned short port);
+
+    void InitProtobufRouter();
 
 public:
     explicit Server(

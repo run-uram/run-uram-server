@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package map;
+
+import "common.proto";
+
+message GetHexagonsInAreaRequest {
+  double center_latitude = 1;
+  double center_longitude = 2;
+  int32 k_ring_radius = 3;
+  int32 h3_resolution = 4;
+}
