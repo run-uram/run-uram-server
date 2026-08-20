@@ -26,6 +26,7 @@ set(PROTO_FILES
     proto/telemetry.proto
     proto/events.proto
     proto/envelope.proto
+    proto/map.proto
 )
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})

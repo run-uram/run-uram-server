@@ -4,9 +4,20 @@ package map;
 
 import "common.proto";
 
+message HexagonInfo {
+  uint64 h3_index = 1;
+  uint64 owner_user_id = 2;
+  int32 score = 3;
+}
+
 message GetHexagonsInAreaRequest {
   double center_latitude = 1;
   double center_longitude = 2;
   int32 k_ring_radius = 3;
   int32 h3_resolution = 4;
+}
+
+message GetHexagonsInAreaResponse {
+  common.Status status = 1;
+  repeated HexagonInfo hexagons = 2;
 }
