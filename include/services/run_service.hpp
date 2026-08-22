@@ -3,8 +3,12 @@
 #include "repository/iuser_repository.hpp"
 #include "repository/iredis_repository.hpp"
 
+#include "utils/uram_h3.hpp"
+
+#include "common.pb.h"
 #include "telemetry.pb.h"
 #include "events.pb.h"
+#include "map.pb.h"
 
 namespace service
 {
@@ -25,7 +29,14 @@ public:
     {}
 
     net::awaitable<uint64_t> StartRun(uint64_t user_id);
-    net::awaitable<telemetry::LocationBatchAck> ProcessLocationBatch(uint64_t user_id, const telemetry::LocationBatch& batch);
+
+    net::awaitable<telemetry::LocationBatchAck> ProcessLocationBatch(
+        uint64_t user_id, const telemetry::LocationBatch& batch);
+
     net::awaitable<events::FinishRunResponse> FinishRun(uint64_t user_id, uint64_t run_id);
+
+    net::awaitable<map::GetHexagonsInAreaResponse> GetHexagonsInArea(
+        map::GetHexagonsInAreaRequest hexagons_request);
 };
+
 } // namespace service

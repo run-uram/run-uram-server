@@ -117,4 +117,61 @@ net::awaitable<bool> RedisRepository::Delete(const std::string& key)
     co_return result.value() > 0;
 }
 
+net::awaitable<std::vector<map::HexagonInfo>> 
+    RedisRepository::GetHexagonsState(const std::vector<uint64_t>& h3_indices) 
+{
+    if (h3_indices.empty())
+    {
+        co_return std::vector<map::HexagonInfo>{};
+    }
+
+    boost::redis::request request;
+    request.push("HMGET", "hexagons:state");
+    for (uint64_t id : h3_indices)
+    {
+        request.push(std::to_string(id));
+    }
+
+    boost::redis::response<std::vector<std::optional<std::string>>> response;
+    sys::error_code ec;
+
+    co_await m_connection->async_exec(
+        request, response,
+        net::cancel_after(std::chrono::seconds(5), net::redirect_error(net::use_awaitable, ec))
+    );
+
+    if (ec)
+    {
+        LOG_ERROR("Redis HMGET hexagons:state failed: {}", ec.message());
+        co_return std::vector<map::HexagonInfo>{};
+    }
+
+    const auto& raw_results = std::get<0>(response).value();
+
+    std::vector<map::HexagonInfo> result;
+    result.reserve(h3_indices.size());
+    for (size_t i = 0; i < h3_indices.size(); ++i)
+    {
+        map::HexagonInfo info;
+        info.set_h3_index(h3_indices[i]);
+
+        if (raw_results[i].has_value() && !raw_results[i]->empty())
+        {
+            if (!info.ParseFromString(raw_results[i].value()))
+            {
+                LOG_WARN("Corrupted Protobuf for hex index: {}", h3_indices[i]);
+            }
+        }
+        else
+        {
+            info.set_owner_user_id(0);
+            info.set_score(100);
+        }
+
+        result.push_back(std::move(info));
+    }
+
+    co_return result;
+}
+
 } // namespace repository

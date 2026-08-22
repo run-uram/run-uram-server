@@ -8,6 +8,7 @@
 #include <chrono>
 #include "repository/iredis_repository.hpp"
 
+
 namespace repository
 {
 
@@ -23,6 +24,10 @@ public:
     net::awaitable<bool> Set(const std::string& key, const std::string& value, std::chrono::seconds ttl) override;
     net::awaitable<std::optional<std::string>> Get(const std::string& key) override;
     net::awaitable<bool> Delete(const std::string& key) override;
+
+    net::awaitable<std::vector<map::HexagonInfo>> GetHexagonsState(
+        const std::vector<uint64_t>& h3_indices
+    ) override;
 };
 
 } // namespace repository
