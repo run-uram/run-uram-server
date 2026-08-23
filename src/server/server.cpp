@@ -11,6 +11,10 @@ static std::string GetEnvOr(const char* name, const std::string& fallback)
 
 Server::Server(unsigned int io_threads, unsigned int work_threads)
     : m_context(io_threads, work_threads)
+    , m_session_manager(std::make_shared<session::SessionManager>())
+    , m_redis_pubsub_worker(std::make_shared<repository::RedisPubSubWorker>(
+          m_context.GetLowerLayourIOContext().get_executor(), 
+          m_session_manager))
     , m_user_repository(std::make_shared<repository::PostgresUserRepository>(m_context.GetWorkContext()))
     , m_hexagon_repository(std::make_shared<repository::PostgresHexagonRepository>(m_context.GetWorkContext()))
     , m_team_repository(std::make_shared<repository::PostgresTeamRepository>(m_context.GetWorkContext()))
@@ -21,7 +25,7 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
         std::make_shared<controller::HttpController>(m_auth_service),
         std::make_shared<controller::ProtobufController>()
       )
-    , m_session_manager(std::make_shared<session::SessionManager>())
+      
 {
 
     LOG_INFO("--- {} ---", config::ServerConfig::GetServerName());
@@ -46,6 +50,12 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
     net::co_spawn(
         m_context.GetLowerLayourIOContext(),
         WarmupCache(),
+        net::detached
+    );
+
+    net::co_spawn(
+        m_context.GetLowerLayourIOContext(),
+        m_redis_pubsub_worker->Start(),
         net::detached
     );
 

@@ -19,6 +19,7 @@
 #include "repository/postgres_team_repository.hpp"
 #include "repository/postgres_run_repository.hpp"
 #include "repository/redis_repository.hpp"
+#include "repository/redis_pub_sub_worker.hpp"
 
 #include "services/auth_service.hpp"
 
@@ -44,7 +45,11 @@ class Server
 private:
     context::Context m_context;
 
+    std::shared_ptr<session::SessionManager> m_session_manager;
+
     // repository
+    std::shared_ptr<repository::RedisPubSubWorker> m_redis_pubsub_worker;
+    
     std::shared_ptr<repository::IUserRepository> m_user_repository;
     std::shared_ptr<repository::IHexagonRepository> m_hexagon_repository;
     std::shared_ptr<repository::ITeamRepository> m_team_repository;
@@ -55,7 +60,6 @@ private:
     std::shared_ptr<service::AuthService> m_auth_service;
 
     controller::Controller m_controller;
-    std::shared_ptr<session::SessionManager> m_session_manager;
 
 private:
     net::awaitable<void> ListenHttp(unsigned short port);
