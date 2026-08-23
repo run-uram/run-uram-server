@@ -4,7 +4,9 @@
 #include <memory>
 #include <iostream>
 
-#include "controllers/protobuf/ihandler.hpp"
+#include "server/user_session.hpp"
+#include "envelope.pb.h"
+#include "logger/logger.hpp"
 
 namespace controller
 {
@@ -16,7 +18,11 @@ class ProtobufController
 {
 private:
     using CaseType = runuram::proto::Envelope::PayloadCase;
-    std::unordered_map<CaseType, std::unique_ptr<IProtobufHandler>> m_handlers;
+    using HandlerFunc = std::function<net::awaitable<void>(
+        const runuram::proto::Envelope&, 
+        server::session::UserSession&
+    )>;
+    std::unordered_map<CaseType, HandlerFunc> m_handlers;
 
 public:
     ProtobufController() = default;
@@ -28,12 +34,9 @@ public:
     /**
      * @brief Registers a command handler for Protobuf payload case
      */
-    template <typename T, typename... Args>
-    void RegisterHandler(CaseType payload_case, Args&&... args)
+    void RegisterHandler(CaseType payload_case, HandlerFunc handler)
     {
-        static_assert(std::is_base_of_v<IProtobufHandler, T>, 
-                      "T must derive from IProtobufHandler");
-        m_handlers[payload_case] = std::make_unique<T>(std::forward<Args>(args)...);
+        m_handlers[payload_case] = std::move(handler);
     }
 
     /**
@@ -41,16 +44,16 @@ public:
      */
     net::awaitable<void> Dispatch(
         const runuram::proto::Envelope& envelope, 
-        server::session::UserSession& session) const
+        server::session::UserSession& session) const 
     {
         auto it = m_handlers.find(envelope.payload_case());
         if (it != m_handlers.end())
         {
-            co_await it->second->Execute(envelope, session);
+            co_await it->second(envelope, session);
         }
         else
         {
-            std::cerr << "Unhandled payload case: " << static_cast<int>(envelope.payload_case()) << "\n";
+            LOG_WARN("Unhandled protobuf payload case: {}", static_cast<int>(envelope.payload_case()));
         }
     }
 };

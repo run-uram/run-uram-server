@@ -5,8 +5,6 @@
 #include "repository/entities.hpp"
 #include "repository/run_models.hpp"
 
-#include "map.pb.h"
-
 namespace net = boost::asio;
 
 namespace repository

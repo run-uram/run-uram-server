@@ -78,7 +78,7 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
         );
     }
 
-    InitProtobufRouter();
+    SetupProtobufRoutes();
 }
 
 net::awaitable<void> Server::ListenHttp(unsigned short port)
@@ -223,24 +223,32 @@ net::awaitable<void> Server::ListenHttps(unsigned short port)
     }
 }
 
-void Server::InitProtobufRouter()
-{
-    // auto run_service = std::make_shared<service::RunService>(m_redis_repository, m_user_repository);
+void Server::SetupProtobufRoutes()
+{   
+    auto hexagon_service = std::make_shared<service::HexagonService>(m_hexagon_repository, m_redis_repository);
 
-    // m_controller.GetProtobufController()->RegisterHandler<controller::StartRunHandler>(
-    //     runuram::proto::Envelope::kStartRunRequest, 
-    //     run_service
-    // );
+    m_controller.GetProtobufController()->RegisterHandler(
+        runuram::proto::Envelope::kSubscribeViewportRequest,
+        [hexagon_service](const auto& env, auto& session) -> net::awaitable<void> {
+            co_await hexagon_service->HandleViewportSubscription(env.subscribe_viewport_request(), session);
+        }
+    );
 
-    // m_controller.GetProtobufController()->RegisterHandler<controller::LocationBatchHandler>(
-    //     runuram::proto::Envelope::kLocationBatch, 
-    //     run_service
-    // );
+    m_controller.GetProtobufController()->RegisterHandler(
+        runuram::proto::Envelope::kGetHexagonDetailsRequest,
+        [hexagon_service](const auto& env, auto& session) -> net::awaitable<void> {
+            co_await hexagon_service->HandleGetHexagonDetails(env.get_hexagon_details_request(), session);
+        }
+    );
 
-    // m_controller.GetProtobufController()->RegisterHandler<FinishRunHandler>(
-    //     runuram::proto::Envelope::kFinishRunRequest, 
-    //     run_service
-    // );
+    auto user_service = std::make_shared<service::UserService>(m_user_repository);
+
+    m_controller.GetProtobufController()->RegisterHandler(
+        runuram::proto::Envelope::kGetUserProfileRequest,
+        [user_service](const auto& env, auto& session) -> net::awaitable<void> {
+            co_await user_service->HandleGetUserProfile(env.get_user_profile_request(), session);
+        }
+    );
 }
 
 net::awaitable<void> Server::WarmupCache()

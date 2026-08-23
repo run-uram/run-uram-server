@@ -35,6 +35,7 @@ private:
 
     uint64_t m_user_id{0};
     uint64_t m_active_run_id{0};
+    std::unordered_set<uint64_t> m_subscribed_zones;
 
 private:
     net::awaitable<void> ReadLoop()
@@ -161,6 +162,33 @@ public:
             LOG_WARN("Write channel overflow for user {}, dropping packet", m_user_id);
         }
         co_return;
+    }
+
+    net::awaitable<void> AsyncSendProtobuf(const runuram::proto::Envelope& envelope) override
+    {
+        std::string payload;
+        if (!envelope.SerializeToString(&payload))
+        {
+            LOG_ERROR("Failed to serialize Protobuf Envelope for user {}", m_user_id);
+            co_return;
+        }
+        co_await SendAsync(std::move(payload));
+    }
+
+    void UpdateSubscribedZones(const std::vector<uint64_t>& zones) override
+    {
+        m_subscribed_zones.clear();
+        m_subscribed_zones.insert(zones.begin(), zones.end());
+
+        if (m_session_manager)
+        {
+            m_session_manager->UpdateViewportSubscription(this->shared_from_this(), zones);
+        }
+    }
+
+    const std::unordered_set<uint64_t>& GetSubscribedZones() const noexcept override
+    {
+        return m_subscribed_zones;
     }
 
     uint64_t GetActiveRunId() const noexcept { return m_active_run_id; }

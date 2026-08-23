@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package gamemap;
+
+import "common.proto";
+
+message HexagonState {
+  uint64 h3_index = 1; // H3 res=9
+  uint64 owner_user_id = 2;
+  string owner_username = 3;
+  string owner_color_hex = 4;
+  int32 top_score = 5; // Uram-points
+}
+
+message SubscribeViewportRequest {
+  double south_west_lng = 1;
+  double south_west_lat = 2;
+  double north_east_lng = 3;
+  double north_east_lat = 4;
+}
+
+message SubscribeViewportResponse {
+  common.Status status = 1;
+  repeated HexagonState hexagons = 2;
+}
+
+// Pub/Sub
+message HexagonCaptureEvent {
+  uint64 h3_index = 1;
+  uint64 new_owner_id = 2;
+  string new_owner_name = 3;
+  string new_owner_color_hex = 4;
+  uint64 prev_owner_id = 5;
+  int32 score_at_capture = 6;
+  int64 timestamp = 7;
+}
+
+message GetHexagonDetailsRequest {
+  uint64 h3_index = 1;
+}
+
+message HexagonLeaderboardEntry {
+  uint64 user_id = 1;
+  string username = 2;
+  string player_color_hex = 3;
+  int32 uram_points = 4;
+  double total_distance_meters = 5;
+  int32 visits_count = 6;
+}
+
+message HexagonDetailsResponse {
+  common.Status status = 1;
+  HexagonState state = 2;
+  repeated HexagonLeaderboardEntry leaderboard = 3;
+}

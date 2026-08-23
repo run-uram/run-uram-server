@@ -18,11 +18,10 @@
 #include "repository/connection_pool.hpp"
 
 #include "services/auth_service.hpp"
-// #include "services/run_service.hpp"
+#include "services/hexagon_service.hpp"
+#include "services/user_service.hpp"
 
 #include "controllers/controller.hpp"
-#include "controllers/protobuf/start_run.hpp"
-#include "controllers/protobuf/location_batch.hpp"
 #include "context/context.hpp"
 
 #include "controllers/controller.hpp"
@@ -83,7 +82,7 @@ private:
     net::awaitable<void> ListenHttp(unsigned short port);
     net::awaitable<void> ListenHttps(unsigned short port);
 
-    void InitProtobufRouter();
+    void SetupProtobufRoutes();
     net::awaitable<void> WarmupCache();
 
 public:

@@ -8,7 +8,7 @@
 #include "common.pb.h"
 #include "telemetry.pb.h"
 #include "events.pb.h"
-#include "map.pb.h"
+#include "gamemap.pb.h"
 
 namespace service
 {

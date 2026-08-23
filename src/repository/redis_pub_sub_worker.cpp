@@ -40,52 +40,81 @@ net::awaitable<void> RedisPubSubWorker::Start()
         boost::redis::request request;
         request.push("PSUBSCRIBE", m_pattern);
 
-        boost::redis::generic_response response;
-        co_await m_connection->async_exec(request, response, net::use_awaitable);
+        co_await m_connection->async_exec(request, m_response, net::use_awaitable);
+
+        LOG_INFO("Redis Pub/Sub Worker subscribed to pattern: {}", m_pattern);
+
+        boost::redis::generic_response push_response;
 
         for (;;)
         {
-            auto [ec, n] = co_await m_connection->async_receive(net::as_tuple(net::use_awaitable));
+            push_response.value().clear();
+
+            auto [ec, n] = co_await m_connection->async_receive(
+                net::as_tuple(net::use_awaitable)
+            );
+
             if (ec)
             {
+                LOG_WARN("Redis Pub/Sub receive error: {}", ec.message());
                 break;
             }
 
-            const auto& nodes = response.value();
+            const auto& nodes = m_response.value();
             // [0]="pmessage", [1]=pattern, [2]=channel, [3]=payload
             if (nodes.size() >= 4 && nodes[0].value == "pmessage")
             {
-                std::string channel_name = nodes[2].value;
-                std::string payload = nodes[3].value;
-                std::string h3_zone = ExtractH3Zone(channel_name);
-                if (m_session_manager)
+                const std::string& channel_name = nodes[2].value;
+                const std::string& payload = nodes[3].value;
+
+                uint64_t h3_zone = ExtractH3Zone(channel_name);
+
+                if (h3_zone != 0 && m_session_manager)
                 {
                     m_session_manager->BroadcastToZone(h3_zone, payload);
                 }
             }
-            response.value().clear();
+
+            m_response.value().clear();
         }
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("Redis Pub/Sub Worker {}", e.what());
+        LOG_ERROR("Redis Pub/Sub Worker exception: {}", e.what());
     }
 }
 
 void RedisPubSubWorker::Stop()
 {
     m_connection->cancel();
+    m_response.value().clear();
 }
 
-std::string RedisPubSubWorker::ExtractH3Zone(const std::string& channel) const
+uint64_t RedisPubSubWorker::ExtractH3Zone(std::string_view channel_name)
 {
-    const std::string prefix = "kazan:zone:";
-    if (channel.rfind(prefix, 0) == 0)
-    {
-        return channel.substr(prefix.length());
+    // "kazan:zone:<h3_index_hex>" or "kazan:zone:<h3_index_dec>"
+    constexpr std::string_view prefix = "kazan:zone:";
+    if (!channel_name.starts_with(prefix)) {
+        return 0;
     }
-    
-    return channel;
+
+    std::string_view zone_view = channel_name.substr(prefix.size());
+    uint64_t h3_zone = 0;
+
+    auto [ptr, ec] = std::from_chars(
+        zone_view.data(), 
+        zone_view.data() + zone_view.size(), 
+        h3_zone, 
+        16 // base 16 (hex)
+    );
+
+    if (ec != std::errc{})
+    {
+        LOG_WARN("Failed to parse H3 zone from channel: {}", channel_name);
+        return 0;
+    }
+
+    return h3_zone;
 }
 
 } // namespace repository

@@ -7,18 +7,20 @@ namespace server::session
 void SessionManager::AddSession(uint64_t user_id, SessionPtr session)
 {
     std::unique_lock lock(m_mutex);
-    m_user_sessions[user_id].insert(session);
+    m_user_sessions[user_id].insert(std::move(session));
 }
 
-void SessionManager::UpdateViewportSubscription(SessionPtr session, const std::vector<std::string>& new_h3_zones)
+void SessionManager::UpdateViewportSubscription(
+    SessionPtr session, 
+    const std::vector<uint64_t>& new_h3_zones)
 {
     std::unique_lock lock(m_mutex);
     SessionRawPtr raw_ptr = session.get();
 
-    std::unordered_set<std::string> new_zones_set(new_h3_zones.begin(), new_h3_zones.end());
+    std::unordered_set<uint64_t> new_zones_set(new_h3_zones.begin(), new_h3_zones.end());
     auto& current_zones = m_session_zones[raw_ptr];
 
-    for (const auto& old_zone : current_zones)
+    for (uint64_t old_zone : current_zones)
     {
         if (!new_zones_set.contains(old_zone))
         {
@@ -33,7 +35,7 @@ void SessionManager::UpdateViewportSubscription(SessionPtr session, const std::v
         }
     }
 
-    for (const auto& new_zone : new_zones_set)
+    for (uint64_t new_zone : new_zones_set)
     {
         if (!current_zones.contains(new_zone))
         {
@@ -50,7 +52,7 @@ void SessionManager::RemoveSession(uint64_t user_id, SessionRawPtr raw_ptr)
 
     if (auto it = m_session_zones.find(raw_ptr); it != m_session_zones.end())
     {
-        for (const auto& zone : it->second)
+        for (uint64_t zone : it->second)
         {
             if (auto zone_it = m_zone_subscribers.find(zone); zone_it != m_zone_subscribers.end())
             {
@@ -64,7 +66,6 @@ void SessionManager::RemoveSession(uint64_t user_id, SessionRawPtr raw_ptr)
                 }
             }
         }
-
         m_session_zones.erase(it);
     }
 
@@ -81,10 +82,9 @@ void SessionManager::RemoveSession(uint64_t user_id, SessionRawPtr raw_ptr)
     }
 }
 
-void SessionManager::BroadcastToZone(const std::string& h3_zone, const std::string& payload)
+void SessionManager::BroadcastToZone(uint64_t h3_zone, const std::string& payload)
 {
     std::vector<SessionPtr> target_sessions;
-
     {
         std::shared_lock lock(m_mutex);
         if (auto it = m_zone_subscribers.find(h3_zone); it != m_zone_subscribers.end())
@@ -97,7 +97,7 @@ void SessionManager::BroadcastToZone(const std::string& h3_zone, const std::stri
         }
     }
 
-    for (auto& session : target_sessions)
+    for (const auto& session : target_sessions)
     {
         net::co_spawn(
             session->GetExecutor(),
@@ -124,7 +124,7 @@ void SessionManager::SendToUser(uint64_t user_id, const std::string& payload)
         }
     }
 
-    for (auto& session : target_sessions)
+    for (const auto& session : target_sessions)
     {
         net::co_spawn(
             session->GetExecutor(),
