@@ -1,15 +1,5 @@
 #include "server/server.hpp"
 
-#include "config/config.hpp"
-#include "logger/logger.hpp"
-#include "server/http_session.hpp"
-#include "repository/postgres_user_repository.hpp"
-#include "repository/redis_repository.hpp"
-#include "repository/connection_pool.hpp"
-#include "services/auth_service.hpp"
-#include "controllers/http/http_controller.hpp"
-#include "controllers/protobuf/protobuf_controller.hpp"
-
 namespace server
 {
 
@@ -22,6 +12,9 @@ static std::string GetEnvOr(const char* name, const std::string& fallback)
 Server::Server(unsigned int io_threads, unsigned int work_threads)
     : m_context(io_threads, work_threads)
     , m_user_repository(std::make_shared<repository::PostgresUserRepository>(m_context.GetWorkContext()))
+    , m_hexagon_repository(std::make_shared<repository::PostgresHexagonRepository>(m_context.GetWorkContext()))
+    , m_team_repository(std::make_shared<repository::PostgresTeamRepository>(m_context.GetWorkContext()))
+    , m_run_repository(std::make_shared<repository::PostgresRunRepository>(m_context.GetWorkContext()))
     , m_redis_repository(std::make_shared<repository::RedisRepository>(m_context.GetLowerLayourIOContext().get_executor()))
     , m_auth_service(std::make_shared<service::AuthService>(m_user_repository, m_redis_repository, m_context.GetWorkContext()))
     , m_controller(
@@ -49,6 +42,12 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
     {
         m_context.EnableSSL();
     }
+
+    net::co_spawn(
+        m_context.GetLowerLayourIOContext(),
+        WarmupCache(),
+        net::detached
+    );
 
     const auto& network_config = server_config.GetNetworkSettings();
 
@@ -209,6 +208,30 @@ net::awaitable<void> Server::ListenHttps(unsigned short port)
             },
             net::detached
         );
+    }
+}
+
+net::awaitable<void> Server::WarmupCache()
+{
+    LOG_INFO("Starting Redis cache warmup...");
+
+    auto hex_records = co_await m_hexagon_repository->GetAllActiveHexagons();
+    
+    if (!hex_records.empty())
+    {
+        bool ok = co_await m_redis_repository->WarmupHexagonOwners(hex_records);
+        if (ok)
+        {
+            LOG_INFO("Warmup completed: {} hexagons loaded into Redis", hex_records.size());
+        }
+        else
+        {
+            LOG_ERROR("Redis warmup failed!");
+        }
+    }
+    else
+    {
+        LOG_INFO("Warmup skipped: database has no active hexagons");
     }
 }
 

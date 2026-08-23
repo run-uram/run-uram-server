@@ -6,6 +6,7 @@
 #include <boost/beast/websocket.hpp>
 
 #include <boost/asio.hpp>
+#include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/ssl/error.hpp>
 #include <boost/asio/ssl/stream.hpp>
 
