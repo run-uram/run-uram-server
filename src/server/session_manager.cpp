@@ -4,78 +4,132 @@
 namespace server::session
 {
 
-void SessionManager::AddSession(uint64_t user_id, std::shared_ptr<UserSession> session)
-{
-    std::shared_ptr<UserSession> old_session;
-    {
-        std::unique_lock lock(m_mutex);
-        auto it = m_session.find(user_id);
-        if (it != m_session.end())
-        {
-            old_session = std::move(it->second);
-        }
-        m_session[user_id] = std::move(session);
-    }
-
-    if (old_session)
-    {
-        old_session->Close();
-    }
-}
-
-void SessionManager::RemoveSession(uint64_t user_id, const UserSession* session)
+void SessionManager::AddSession(uint64_t user_id, SessionPtr session)
 {
     std::unique_lock lock(m_mutex);
-    auto it = m_session.find(user_id);
-    if (it != m_session.end())
+    m_user_sessions[user_id].insert(session);
+}
+
+void SessionManager::UpdateViewportSubscription(SessionPtr session, const std::vector<std::string>& new_h3_zones)
+{
+    std::unique_lock lock(m_mutex);
+    SessionRawPtr raw_ptr = session.get();
+
+    std::unordered_set<std::string> new_zones_set(new_h3_zones.begin(), new_h3_zones.end());
+    auto& current_zones = m_session_zones[raw_ptr];
+
+    for (const auto& old_zone : current_zones)
     {
-        if (session == nullptr || it->second.get() == session)
+        if (!new_zones_set.contains(old_zone))
         {
-            m_session.erase(it);
-        }
-    }
-}
-
-std::shared_ptr<UserSession> SessionManager::GetSession(uint64_t user_id) const
-{
-    std::shared_lock lock(m_mutex);
-    auto it = m_session.find(user_id);
-    if (it != m_session.end())
-    {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-bool SessionManager::IsUserOnline(uint64_t user_id) const
-{
-    std::shared_lock lock(m_mutex);
-    return m_session.find(user_id) != m_session.end();
-}
-
-void SessionManager::Broadcast(const std::string& bytes, uint64_t exclude_user_id)
-{
-    std::vector<std::shared_ptr<UserSession>> sessions_snapshot;
-
-    {
-        std::shared_lock lock(m_mutex);
-        sessions_snapshot.reserve(m_session.size());
-        for (const auto& [user_id, session] : m_session)
-        {
-            if (user_id != exclude_user_id)
+            if (auto it = m_zone_subscribers.find(old_zone); it != m_zone_subscribers.end())
             {
-                sessions_snapshot.push_back(session);
+                it->second.erase(session);
+                if (it->second.empty())
+                {
+                    m_zone_subscribers.erase(it);
+                }
             }
         }
     }
 
-    for (auto& session : sessions_snapshot)
+    for (const auto& new_zone : new_zones_set)
+    {
+        if (!current_zones.contains(new_zone))
+        {
+            m_zone_subscribers[new_zone].insert(session);
+        }
+    }
+
+    current_zones = std::move(new_zones_set);
+}
+
+void SessionManager::RemoveSession(uint64_t user_id, SessionRawPtr raw_ptr)
+{
+    std::unique_lock lock(m_mutex);
+
+    if (auto it = m_session_zones.find(raw_ptr); it != m_session_zones.end())
+    {
+        for (const auto& zone : it->second)
+        {
+            if (auto zone_it = m_zone_subscribers.find(zone); zone_it != m_zone_subscribers.end())
+            {
+                std::erase_if(zone_it->second, [raw_ptr](const SessionPtr& s) {
+                    return s.get() == raw_ptr;
+                });
+
+                if (zone_it->second.empty())
+                {
+                    m_zone_subscribers.erase(zone_it);
+                }
+            }
+        }
+
+        m_session_zones.erase(it);
+    }
+
+    if (auto it = m_user_sessions.find(user_id); it != m_user_sessions.end())
+    {
+        std::erase_if(it->second, [raw_ptr](const SessionPtr& s) {
+            return s.get() == raw_ptr;
+        });
+
+        if (it->second.empty())
+        {
+            m_user_sessions.erase(it);
+        }
+    }
+}
+
+void SessionManager::BroadcastToZone(const std::string& h3_zone, const std::string& payload)
+{
+    std::vector<SessionPtr> target_sessions;
+
+    {
+        std::shared_lock lock(m_mutex);
+        if (auto it = m_zone_subscribers.find(h3_zone); it != m_zone_subscribers.end())
+        {
+            target_sessions.reserve(it->second.size());
+            for (const auto& session : it->second)
+            {
+                target_sessions.push_back(session);
+            }
+        }
+    }
+
+    for (auto& session : target_sessions)
     {
         net::co_spawn(
             session->GetExecutor(),
-            [session, bytes]() -> net::awaitable<void> {
-                co_await session->SendAsync(bytes);
+            [session, payload]() -> net::awaitable<void> {
+                co_await session->SendAsync(payload);
+            },
+            net::detached
+        );
+    }
+}
+
+void SessionManager::SendToUser(uint64_t user_id, const std::string& payload)
+{
+    std::vector<SessionPtr> target_sessions;
+    {
+        std::shared_lock lock(m_mutex);
+        if (auto it = m_user_sessions.find(user_id); it != m_user_sessions.end())
+        {
+            target_sessions.reserve(it->second.size());
+            for (const auto& session : it->second)
+            {
+                target_sessions.push_back(session);
+            }
+        }
+    }
+
+    for (auto& session : target_sessions)
+    {
+        net::co_spawn(
+            session->GetExecutor(),
+            [session, payload]() -> net::awaitable<void> {
+                co_await session->SendAsync(payload);
             },
             net::detached
         );

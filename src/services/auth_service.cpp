@@ -17,7 +17,9 @@ net::awaitable<std::optional<AuthResult>> AuthService::Authenticate(std::string 
         co_return std::nullopt;
     }
 
-    bool is_valid = utils::crypto::VerifyPassword(password, user->password_hash);
+    bool is_valid = co_await m_work_context.AsyncPost([password=password, hash=user->password_hash]() -> bool {
+        return utils::crypto::VerifyPassword(password, hash);
+    });
 
     if (!is_valid)
     {

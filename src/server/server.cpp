@@ -11,14 +11,21 @@ static std::string GetEnvOr(const char* name, const std::string& fallback)
 
 Server::Server(unsigned int io_threads, unsigned int work_threads)
     : m_context(io_threads, work_threads)
+    , m_session_manager(std::make_shared<session::SessionManager>())
+    , m_redis_pubsub_worker(std::make_shared<repository::RedisPubSubWorker>(
+          m_context.GetLowerLayourIOContext().get_executor(), 
+          m_session_manager))
     , m_user_repository(std::make_shared<repository::PostgresUserRepository>(m_context.GetWorkContext()))
+    , m_hexagon_repository(std::make_shared<repository::PostgresHexagonRepository>(m_context.GetWorkContext()))
+    , m_team_repository(std::make_shared<repository::PostgresTeamRepository>(m_context.GetWorkContext()))
+    , m_run_repository(std::make_shared<repository::PostgresRunRepository>(m_context.GetWorkContext()))
     , m_redis_repository(std::make_shared<repository::RedisRepository>(m_context.GetLowerLayourIOContext().get_executor()))
     , m_auth_service(std::make_shared<service::AuthService>(m_user_repository, m_redis_repository, m_context.GetWorkContext()))
     , m_controller(
         std::make_shared<controller::HttpController>(m_auth_service),
         std::make_shared<controller::ProtobufController>()
       )
-    , m_session_manager(std::make_shared<session::SessionManager>())
+      
 {
 
     LOG_INFO("--- {} ---", config::ServerConfig::GetServerName());
@@ -39,6 +46,18 @@ Server::Server(unsigned int io_threads, unsigned int work_threads)
     {
         m_context.EnableSSL();
     }
+
+    net::co_spawn(
+        m_context.GetLowerLayourIOContext(),
+        WarmupCache(),
+        net::detached
+    );
+
+    net::co_spawn(
+        m_context.GetLowerLayourIOContext(),
+        m_redis_pubsub_worker->Start(),
+        net::detached
+    );
 
     const auto& network_config = server_config.GetNetworkSettings();
 
@@ -206,22 +225,46 @@ net::awaitable<void> Server::ListenHttps(unsigned short port)
 
 void Server::InitProtobufRouter()
 {
-    auto run_service = std::make_shared<service::RunService>(m_redis_repository, m_user_repository);
+    // auto run_service = std::make_shared<service::RunService>(m_redis_repository, m_user_repository);
 
-    m_controller.GetProtobufController()->RegisterHandler<controller::StartRunHandler>(
-        runuram::proto::Envelope::kStartRunRequest, 
-        run_service
-    );
+    // m_controller.GetProtobufController()->RegisterHandler<controller::StartRunHandler>(
+    //     runuram::proto::Envelope::kStartRunRequest, 
+    //     run_service
+    // );
 
-    m_controller.GetProtobufController()->RegisterHandler<controller::LocationBatchHandler>(
-        runuram::proto::Envelope::kLocationBatch, 
-        run_service
-    );
+    // m_controller.GetProtobufController()->RegisterHandler<controller::LocationBatchHandler>(
+    //     runuram::proto::Envelope::kLocationBatch, 
+    //     run_service
+    // );
 
     // m_controller.GetProtobufController()->RegisterHandler<FinishRunHandler>(
     //     runuram::proto::Envelope::kFinishRunRequest, 
     //     run_service
     // );
+}
+
+net::awaitable<void> Server::WarmupCache()
+{
+    LOG_INFO("Starting Redis cache warmup...");
+
+    auto hex_records = co_await m_hexagon_repository->GetAllActiveHexagons();
+    
+    if (!hex_records.empty())
+    {
+        bool ok = co_await m_redis_repository->WarmupHexagonOwners(hex_records);
+        if (ok)
+        {
+            LOG_INFO("Warmup completed: {} hexagons loaded into Redis", hex_records.size());
+        }
+        else
+        {
+            LOG_ERROR("Redis warmup failed!");
+        }
+    }
+    else
+    {
+        LOG_INFO("Warmup skipped: database has no active hexagons");
+    }
 }
 
 void Server::Run()
