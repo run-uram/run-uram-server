@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared_mutex>
+#include <unordered_set>
 #include <memory>
 #include <vector>
 #include <string>
@@ -16,13 +17,20 @@ class UserSession;
 /**
  * @brief Manages active network user sessions
  */
-class SessionManager
+class SessionManager : public std::enable_shared_from_this<SessionManager>
 {
 private:
-    /**
-     * @brief Table of active sessions (User ID -> UserSession)
-     */
-    std::unordered_map<uint64_t, std::shared_ptr<UserSession>> m_session;
+    using SessionPtr = std::shared_ptr<session::UserSession>;
+    using SessionRawPtr = UserSession*;
+
+    // h3_parent_index (res=6) -> Sessions
+    std::unordered_map<std::string, std::unordered_set<SessionPtr>> m_zone_subscribers;
+    
+    // user_id -> Sessions
+    std::unordered_map<uint64_t, std::unordered_set<SessionPtr>> m_user_sessions;
+    
+    // Sessions -> h3_parent_index
+    std::unordered_map<SessionRawPtr, std::unordered_set<std::string>> m_session_zones;
 
     mutable std::shared_mutex m_mutex;
 
@@ -33,20 +41,13 @@ public:
     SessionManager(const SessionManager&) = delete;
     SessionManager& operator=(const SessionManager&) = delete;
 
-    void AddSession(uint64_t user_id, std::shared_ptr<UserSession> session);
-    void RemoveSession(uint64_t user_id);
+    void AddSession(uint64_t user_id, SessionPtr session);
+    void RemoveSession(uint64_t user_id, SessionRawPtr raw_ptr);
 
-    std::shared_ptr<UserSession> GetSession(uint64_t user_id) const;
+    void UpdateViewportSubscription(SessionPtr session, const std::vector<std::string>& new_h3_zones);
 
-    bool IsUserOnline(uint64_t user_id) const;
-
-    /**
-     * @brief Asynchronously broadcasts to connected users
-     * @param bytes Message payload
-     * @param exclude_user_id Optional user ID to exclude from the broadcast (e.g., the sender). 
-     *                        Defaults to 0 (broadcast to everyone)
-     */
-    void Broadcast(const std::string& bytes, uint64_t exclude_user_id = 0);
+    void BroadcastToZone(const std::string& h3_zone, const std::string& payload);
+    void SendToUser(uint64_t user_id, const std::string& payload);
 };
 
 } // namespace server::session

@@ -15,8 +15,7 @@ private:
     std::shared_ptr<ProtobufController> m_protobuf_controller;
 
 public:
-    Controller();
-    explicit Controller(
+    Controller(
         std::shared_ptr<HttpController> http_controller,
         std::shared_ptr<ProtobufController> protobuf_controller
     );

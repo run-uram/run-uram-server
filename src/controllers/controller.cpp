@@ -6,11 +6,6 @@
 namespace controller
 {
 
-Controller::Controller()
-    : m_http_controller(std::make_shared<HttpController>())
-    , m_protobuf_controller(std::make_shared<ProtobufController>())
-{}
-
 Controller::Controller(
     std::shared_ptr<HttpController> http_controller,
     std::shared_ptr<ProtobufController> protobuf_controller)

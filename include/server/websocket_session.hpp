@@ -23,10 +23,12 @@ class WebSocketSession
     , public std::enable_shared_from_this<WebSocketSession<Stream>>
 {
 private:
+    using WriteChannel = net::experimental::channel<void(sys::error_code, std::string)>;
+
     websocket::stream<Stream> m_ws;
     beast::flat_buffer m_buffer;
 
-    std::deque<std::string> m_write_queue;
+    WriteChannel m_write_channel;
 
     std::shared_ptr<controller::ProtobufController> m_controller;
     std::shared_ptr<session::SessionManager> m_session_manager;
@@ -56,29 +58,30 @@ private:
         }
         catch (const std::exception& ex)
         {
-            LOG_DEBUG("WebSocket closed for user {}: {}", m_user_id, ex.what());
+            LOG_DEBUG("WebSocket read loop finished for user {}: {}", m_user_id, ex.what());
         }
+
+        m_write_channel.close();
     }
 
     net::awaitable<void> WriteLoop()
     {
-        while (!m_write_queue.empty())
+        for (;;)
         {
-            sys::error_code ec;
-            
-            co_await m_ws.async_write(
-                net::buffer(m_write_queue.front()), 
-                net::redirect_error(net::use_awaitable, ec)
-            );
-
+            auto [ec, msg] = co_await m_write_channel.async_receive(net::as_tuple(net::use_awaitable));
             if (ec)
             {
-                LOG_DEBUG("Write error for user {}: {}", m_user_id, ec.message());
-                m_write_queue.clear();
-                co_return;
+                break;
             }
 
-            m_write_queue.pop_front();
+            sys::error_code write_ec;
+            co_await m_ws.async_write(net::buffer(msg), net::redirect_error(net::use_awaitable, write_ec));
+
+            if (write_ec)
+            {
+                LOG_DEBUG("Write error for user {}: {}", m_user_id, write_ec.message());
+                break;
+            }
         }
     }
 
@@ -89,6 +92,7 @@ public:
         std::shared_ptr<session::SessionManager> session_manager,
         uint64_t user_id = 0)
         : m_ws(std::move(stream))
+        , m_write_channel(m_ws.get_executor(), 128)
         , m_controller(std::move(controller))
         , m_session_manager(std::move(session_manager))
         , m_user_id(user_id)
@@ -96,14 +100,21 @@ public:
 
     ~WebSocketSession() override
     {
-        if (m_session_manager && m_user_id != 0)
+        if (m_session_manager)
         {
-            m_session_manager->RemoveSession(m_user_id);
+            m_session_manager->RemoveSession(m_user_id, this);
         }
     }
 
+    void Close() override
+    {
+        m_write_channel.close();
+        beast::error_code ec;
+        beast::get_lowest_layer(m_ws).socket().close(ec);
+    }
+
     template <typename Body, typename Allocator>
-    net::awaitable<void> Run(http::request<Body, http::basic_fields<Allocator>> req)
+    net::awaitable<void> Run(http::request<Body, http::basic_fields<Allocator>> request)
     {
         auto self = this->shared_from_this();
 
@@ -111,7 +122,7 @@ public:
         m_ws.set_option(websocket::stream_base::timeout::suggested(beast::role_type::server));
 
         sys::error_code ec;
-        co_await m_ws.async_accept(req, net::redirect_error(net::use_awaitable, ec));
+        co_await m_ws.async_accept(request, net::redirect_error(net::use_awaitable, ec));
 
         if (ec)
         {
@@ -119,11 +130,16 @@ public:
             co_return;
         }
 
-        if (m_session_manager && m_user_id != 0)
+        if (m_session_manager)
         {
             m_session_manager->AddSession(m_user_id, self);
         }
+
         LOG_DEBUG("User {} connected via WebSocket", m_user_id);
+
+        auto executor = co_await net::this_coro::executor;
+
+        net::co_spawn(executor, [self]() { return self->WriteLoop(); }, net::detached);
 
         co_await ReadLoop();
     }
@@ -140,15 +156,11 @@ public:
 
     net::awaitable<void> SendAsync(std::string message) override
     {
-        bool write_in_progress = !m_write_queue.empty();
-        m_write_queue.push_back(std::move(message));
-
-        if (write_in_progress)
+        if (!m_write_channel.try_send(sys::error_code{}, std::move(message)))
         {
-            co_return;
+            LOG_WARN("Write channel overflow for user {}, dropping packet", m_user_id);
         }
-
-        co_await WriteLoop();
+        co_return;
     }
 
     uint64_t GetActiveRunId() const noexcept { return m_active_run_id; }

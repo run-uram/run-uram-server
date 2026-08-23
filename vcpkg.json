@@ -10,6 +10,7 @@
     "boost-program-options",
     "boost-redis",
     "boost-system",
+    "boost-uuid",
     "gtest",
     "openssl",
     "spdlog",

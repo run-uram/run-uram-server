@@ -42,6 +42,10 @@ target_link_libraries(${PROJECT_NAME}_lib PUBLIC
     protobuf::libprotobuf
 )
 
+target_compile_options(${PROJECT_NAME}_lib PRIVATE
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized>
+)
+
 target_precompile_headers(${PROJECT_NAME}_lib
     PUBLIC 
         include/common.hpp

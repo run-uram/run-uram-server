@@ -5,7 +5,8 @@ namespace context
 
 IOContext::IOContext(unsigned int thread_pool_size)
     : m_io_context(static_cast<int>(thread_pool_size))
-    , m_thread_pool_size(thread_pool_size)
+    , m_thread_pool_size(thread_pool_size == 0 ? 1 : thread_pool_size)
+    , m_work_guard(net::make_work_guard(m_io_context))
 {}
 
 void IOContext::Run()
@@ -33,6 +34,7 @@ void IOContext::Run()
 
 void IOContext::Stop()
 {
+    m_work_guard.reset();
     m_io_context.stop();
 }
 

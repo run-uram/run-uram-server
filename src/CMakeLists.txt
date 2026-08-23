@@ -5,6 +5,8 @@ target_sources(${PROJECT_NAME}_lib PRIVATE
 add_subdirectory(logger)
 add_subdirectory(config)
 add_subdirectory(context)
+add_subdirectory(utils)
+add_subdirectory(repository)
+add_subdirectory(services)
 add_subdirectory(controllers)
 add_subdirectory(server)
-
