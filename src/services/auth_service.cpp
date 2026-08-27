@@ -6,7 +6,7 @@ namespace service
 {
 
 constexpr std::chrono::seconds gTempTolenTTL{30};
-constexpr std::chrono::seconds g_JWTAccessTokenTTL{std::chrono::hours(24 * 30)}; // 30 days
+constexpr std::chrono::seconds g_JWTAccessTokenTTL{std::chrono::hours(24 * 10)}; // 10 days
 constexpr std::string_view g_TempTokenPrefix = "ws_ticket:";
 
 net::awaitable<std::optional<AuthResult>> AuthService::Authenticate(std::string username, std::string password)

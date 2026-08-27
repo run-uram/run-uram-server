@@ -48,7 +48,8 @@ private:
                 co_await m_ws.async_read(m_buffer, net::use_awaitable);
 
                 runuram::proto::Envelope envelope;
-                if (!envelope.ParseFromArray(m_buffer.data().data(), static_cast<int>(m_buffer.size())))
+                auto bytes = m_buffer.data();
+                if (!envelope.ParseFromArray(bytes.data(), bytes.size()))
                 {
                     LOG_DEBUG("Failed to parse Protobuf payload from user {}", m_user_id);
                     continue;

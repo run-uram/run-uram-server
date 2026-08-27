@@ -147,13 +147,15 @@ net::awaitable<bool> RedisRepository::WarmupHexagonOwners(
     }
 
     boost::redis::request request;
-    // HSET kazan:hex:owners <h3_index> <owner_id> ...
-    request.push("HSET", "kazan:hex:owners");
+    
+    std::vector<std::string> hset_args;
+    hset_args.reserve(records.size() * 2);
     for (const auto& record : records)
     {
-        request.push(std::to_string(record.h3_index));
-        request.push(std::to_string(record.owner_user_id));
+        hset_args.push_back(std::to_string(record.h3_index));
+        hset_args.push_back(std::to_string(record.owner_user_id));
     }
+    request.push_range("HSET", "kazan:hex:owners", hset_args);
 
     for (const auto& record : records)
     {
@@ -231,39 +233,44 @@ net::awaitable<std::vector<std::pair<uint64_t, uint64_t>>> RedisRepository::GetH
         co_return std::vector<std::pair<uint64_t, uint64_t>>{};
     }
 
-    // HMGET kazan:hex:owners idx1 idx2 idx3 ...
     boost::redis::request request;
-    request.push("HMGET", "kazan:hex:owners");
+    
+    std::vector<std::string> fields;
+    fields.reserve(h3_indices.size());
     for (uint64_t idx : h3_indices)
     {
-        request.push(std::to_string(idx));
+        fields.push_back(std::to_string(idx));
     }
+    request.push_range("HMGET", "kazan:hex:owners", fields);
 
-    boost::redis::response<std::vector<std::optional<std::string>>> response;
+    boost::redis::generic_response response;
     boost::system::error_code ec;
-
     co_await m_connection->async_exec(
         request, 
         response, 
         net::redirect_error(net::use_awaitable, ec)
     );
-
-    if (ec)
+    if (ec || !response.has_value())
     {
-        LOG_WARN("Redis HMGET failed for batch hexagons: {}", ec.message());
+        LOG_WARN("Redis HMGET failed for batch hexagons: {}", ec ? ec.message() : "empty response");
         co_return std::vector<std::pair<uint64_t, uint64_t>>{};
     }
-
-    const auto& values = std::get<0>(response).value();
     std::vector<std::pair<uint64_t, uint64_t>> result;
-    result.reserve(values.size());
+    result.reserve(h3_indices.size());
+    const auto& nodes = response.value();
 
-    for (size_t i = 0; i < h3_indices.size() && i < values.size(); ++i)
+    size_t node_idx = 0;
+    if (!nodes.empty() && nodes[0].data_type == boost::redis::resp3::type::array)
     {
-        if (values[i].has_value() && !values[i]->empty())
+        node_idx = 1;
+    }
+    for (size_t i = 0; i < h3_indices.size() && node_idx < nodes.size(); ++i, ++node_idx)
+    {
+        const auto& node = nodes[node_idx];
+        if (node.data_type == boost::redis::resp3::type::blob_string ||
+            node.data_type == boost::redis::resp3::type::simple_string)
         {
-            const std::string& owner_str = values[i].value();
-
+            std::string_view owner_str = node.value;
             uint64_t owner_id = 0;
             auto [ptr, parse_ec] = std::from_chars(
                 owner_str.data(), 

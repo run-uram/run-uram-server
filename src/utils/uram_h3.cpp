@@ -40,17 +40,22 @@ std::vector<H3Index> GetCellsInBoundingBox(
     int resolution)
 {
     LatLng verts[4];
+    
+    // South-West
     verts[0].lat = degsToRads(south_west_lat);
     verts[0].lng = degsToRads(south_west_lng); 
 
-    verts[1].lat = degsToRads(north_east_lat);
-    verts[1].lng = degsToRads(south_west_lng);
+    // South-East
+    verts[1].lat = degsToRads(south_west_lat);
+    verts[1].lng = degsToRads(north_east_lng);
 
+    // North-East
     verts[2].lat = degsToRads(north_east_lat);
     verts[2].lng = degsToRads(north_east_lng);
 
-    verts[3].lat = degsToRads(south_west_lat);
-    verts[3].lng = degsToRads(north_east_lng);
+    // North-West
+    verts[3].lat = degsToRads(north_east_lat);
+    verts[3].lng = degsToRads(south_west_lng);
 
     GeoLoop outer_loop;
     outer_loop.numVerts = 4;
