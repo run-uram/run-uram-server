@@ -57,11 +57,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY --from=builder /app/build/runuram /app/runuram
-COPY --from=builder /app/runuram.cfg /app/runuram.cfg
-
 RUN mkdir -p /var/log/runuram /tmp/runuram /opt/runuram/ssl
+
+COPY --from=builder /app/build/runuram /opt/runuram/runuram
+COPY --from=builder /app/runuram.cfg /etc/runuram/runuram.cfg
 
 EXPOSE 8080 8081 9090
 
+WORKDIR /opt/runuram
 CMD ["./runuram"]
