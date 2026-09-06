@@ -55,4 +55,20 @@ struct HexagonProgressResult
     int32_t new_top_score{0};
 };
 
+struct HexagonLeaderboardCacheItem
+{
+    uint64_t user_id{0};
+    int32_t uram_points{0};
+};
+
+struct UserProfileCache
+{
+    uint64_t user_id{0};
+    std::string username;
+    std::string avatar_url;
+    std::string player_color_hex;
+    uint64_t team_id{0};
+    std::string team_color_hex;
+};
+
 } // namespace repository

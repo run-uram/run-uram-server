@@ -30,6 +30,9 @@ public:
     virtual void UpdateSubscribedZones(const std::vector<uint64_t>& zones) = 0;
 
     virtual const std::unordered_set<uint64_t>& GetSubscribedZones() const noexcept = 0;
+
+    virtual uint64_t GetActiveRunId() const noexcept = 0;
+    virtual void SetActiveRunId(uint64_t run_id) noexcept = 0;
 };
 
 } // namespace server::session

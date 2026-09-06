@@ -7,6 +7,7 @@
 
 #include "repository/ihexagon_repository.hpp"
 #include "repository/iredis_repository.hpp"
+#include "repository/iuser_repository.hpp"
 
 namespace net = boost::asio;
 
@@ -23,11 +24,13 @@ class HexagonService
 private:
     std::shared_ptr<repository::IHexagonRepository> m_hex_repository;
     std::shared_ptr<repository::IRedisRepository> m_redis_repository;
+    std::shared_ptr<repository::IUserRepository> m_user_repository;
 
 public:
     HexagonService(
         std::shared_ptr<repository::IHexagonRepository> hex_repository,
-        std::shared_ptr<repository::IRedisRepository> redis_repository
+        std::shared_ptr<repository::IRedisRepository> redis_repository,
+        std::shared_ptr<repository::IUserRepository> user_repository = nullptr
     );
 
     net::awaitable<void> HandleViewportSubscription(

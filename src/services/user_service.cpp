@@ -5,8 +5,11 @@
 namespace service
 {
 
-UserService::UserService(std::shared_ptr<repository::IUserRepository> user_repository)
+UserService::UserService(
+    std::shared_ptr<repository::IUserRepository> user_repository,
+    std::shared_ptr<repository::IRedisRepository> redis_repository)
     : m_user_repository(std::move(user_repository))
+    , m_redis_repository(std::move(redis_repository))
 {}
 
 net::awaitable<void> UserService::HandleGetUserProfile(
@@ -49,6 +52,20 @@ net::awaitable<void> UserService::HandleGetUserProfile(
         response->set_total_runs(user_stats->total_runs);
         response->set_total_uram_points(user_stats->total_uram_points);
         response->set_current_held_hexagons(user_stats->current_held_hexagons);
+    }
+
+    // Cache profile to Redis for fast map viewport / leaderboard lookups
+    if (m_redis_repository)
+    {
+        repository::UserProfileCache cached_profile{
+            .user_id = user_data->id,
+            .username = user_data->username,
+            .avatar_url = "",
+            .player_color_hex = user_data->player_color_hex,
+            .team_id = user_data->team_id.value_or(0),
+            .team_color_hex = ""
+        };
+        co_await m_redis_repository->SetUserProfileCache(user_data->id, cached_profile);
     }
 
     co_await session.AsyncSendProtobuf(envelope);

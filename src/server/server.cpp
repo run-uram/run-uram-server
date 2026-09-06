@@ -224,8 +224,22 @@ net::awaitable<void> Server::ListenHttps(unsigned short port)
 }
 
 void Server::SetupProtobufRoutes()
-{   
-    auto hexagon_service = std::make_shared<service::HexagonService>(m_hexagon_repository, m_redis_repository);
+{
+    m_controller.GetProtobufController()->RegisterHandler(
+        runuram::proto::Envelope::kPing,
+        [](const auto& env, auto& session) -> net::awaitable<void> {
+            runuram::proto::Envelope envelope;
+            auto* response = envelope.mutable_pong();
+            response->set_timestamp(env.ping().timestamp());
+            co_await session.AsyncSendProtobuf(envelope);
+        }
+    );
+
+    auto hexagon_service = std::make_shared<service::HexagonService>(
+        m_hexagon_repository, 
+        m_redis_repository, 
+        m_user_repository
+    );
 
     m_controller.GetProtobufController()->RegisterHandler(
         runuram::proto::Envelope::kSubscribeViewportRequest,
@@ -241,12 +255,40 @@ void Server::SetupProtobufRoutes()
         }
     );
 
-    auto user_service = std::make_shared<service::UserService>(m_user_repository);
+    auto user_service = std::make_shared<service::UserService>(m_user_repository, m_redis_repository);
 
     m_controller.GetProtobufController()->RegisterHandler(
         runuram::proto::Envelope::kGetUserProfileRequest,
         [user_service](const auto& env, auto& session) -> net::awaitable<void> {
             co_await user_service->HandleGetUserProfile(env.get_user_profile_request(), session);
+        }
+    );
+
+    auto run_service = std::make_shared<service::RunService>(
+        m_redis_repository, 
+        m_user_repository, 
+        m_hexagon_repository, 
+        m_run_repository
+    );
+
+    m_controller.GetProtobufController()->RegisterHandler(
+        runuram::proto::Envelope::kStartRunRequest,
+        [run_service](const auto& env, auto& session) -> net::awaitable<void> {
+            co_await run_service->HandleStartRun(env.start_run_request(), session);
+        }
+    );
+
+    m_controller.GetProtobufController()->RegisterHandler(
+        runuram::proto::Envelope::kLocationFrame,
+        [run_service](const auto& env, auto& session) -> net::awaitable<void> {
+            co_await run_service->HandleProcessLocationBatch(env.location_frame(), session);
+        }
+    );
+
+    m_controller.GetProtobufController()->RegisterHandler(
+        runuram::proto::Envelope::kFinishRunRequest,
+        [run_service](const auto& env, auto& session) -> net::awaitable<void> {
+            co_await run_service->HandleFinishRun(env.finish_run_request(), session);
         }
     );
 }

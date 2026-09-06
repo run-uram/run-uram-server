@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package team;
+
+import "common.proto";
+
+message GetTeamProfileRequest {
+  uint64 team_id = 1;
+}
+
+message TeamMemberSummary {
+  uint64 user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  int32 total_uram_points = 4;
+}
+
+message TeamProfileResponse {
+  common.Status status = 1;
+  uint64 team_id = 2;
+  string name = 3;
+  string tag = 4;
+  string color_hex = 5;
+  string avatar_url = 6;
+
+  // Агрегированная статистика команды
+  int64 total_members = 7;
+  double total_distance_meters = 8;
+  int32 total_uram_points = 9;
+  int32 current_held_hexagons = 10;
+
+  repeated TeamMemberSummary top_members = 11;
+}

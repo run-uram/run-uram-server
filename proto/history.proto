@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package history;
+
+import "common.proto";
+import "location.proto";
+
+// Краткая карточка забега для списка
+message RunSummary {
+  uint64 run_id = 1;
+  string status = 2; // "finished", "cancelled"
+  double total_distance_meters = 3;
+  int64 total_duration_seconds = 4;
+  int32 uram_points_earned = 5;
+  int64 started_at = 6;  // Unix timestamp в секундах/мс
+  int64 finished_at = 7;
+}
+
+// Запрос списка пробежек с постраничной навигацией (Pagination)
+message GetUserRunsRequest {
+  uint64 user_id = 1; // 0 = текущий пользователь
+  int32 limit = 2;    // Количество записей на страницу (например, 20)
+  int32 offset = 3;   // Смещение для пагинации
+}
+
+message GetUserRunsResponse {
+  common.Status status = 1;
+  repeated RunSummary runs = 2;
+  int32 total_count = 3; // Общее количество пробежек пользователя
+}
+
+// Запрос детальной информации о забеге (включая GPS-точки для карты)
+message GetRunDetailsRequest {
+  uint64 run_id = 1;
+}
+
+message GetRunDetailsResponse {
+  common.Status status = 1;
+  RunSummary summary = 2;
+  repeated location.LocationPoint route_points = 3; // Точки для отрисовки полилинии на карте
+  repeated uint64 captured_h3_indices = 4;        // Гексагоны, затронутые/захваченные за этот забег
+}

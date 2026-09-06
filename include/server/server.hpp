@@ -20,6 +20,7 @@
 #include "services/auth_service.hpp"
 #include "services/hexagon_service.hpp"
 #include "services/user_service.hpp"
+#include "services/run_service.hpp"
 
 #include "controllers/controller.hpp"
 #include "context/context.hpp"

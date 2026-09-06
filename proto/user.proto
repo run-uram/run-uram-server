@@ -5,7 +5,7 @@ package user;
 import "common.proto";
 
 message GetUserProfileRequest {
-  uint64 user_id = 1; // 0 = запросить свой собственный профиль
+  uint64 user_id = 1; // 0 = запросить свой профиль
 }
 
 message UserProfileResponse {
@@ -14,13 +14,17 @@ message UserProfileResponse {
   string username = 3;
   string email = 4;
   string player_color_hex = 5;
-  uint64 team_id = 6;
-  string team_tag = 7;
-  
-  // Агрегированная статистика бегуна
-  double total_distance_meters = 8;
-  int64 total_duration_seconds = 9;
-  int32 total_runs = 10;
-  int32 total_uram_points = 11;
-  int32 current_held_hexagons = 12; // Сколько ячеек держит прямо сейчас
+  string avatar_url = 6;
+
+  uint64 team_id = 7;
+  string team_name = 8;
+  string team_tag = 9;
+  string team_color_hex = 10;
+  string team_avatar_url = 11;
+
+  double total_distance_meters = 12;
+  int64 total_duration_seconds = 13;
+  int32 total_runs = 14;
+  int32 total_uram_points = 15;
+  int32 current_held_hexagons = 16;
 }

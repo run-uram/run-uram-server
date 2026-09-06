@@ -7,6 +7,7 @@
 #include "envelope.pb.h"
 
 #include "repository/iuser_repository.hpp"
+#include "repository/iredis_repository.hpp"
 
 namespace net = boost::asio;
 
@@ -22,9 +23,13 @@ class UserService
 {
 private:
     std::shared_ptr<repository::IUserRepository> m_user_repository;
+    std::shared_ptr<repository::IRedisRepository> m_redis_repository;
 
 public:
-    explicit UserService(std::shared_ptr<repository::IUserRepository> user_repository);
+    explicit UserService(
+        std::shared_ptr<repository::IUserRepository> user_repository,
+        std::shared_ptr<repository::IRedisRepository> redis_repository = nullptr
+    );
 
     net::awaitable<void> HandleGetUserProfile(
         const user::GetUserProfileRequest& request,

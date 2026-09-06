@@ -25,3 +25,11 @@ message FinishRunResponse {
   uint32 hexes_claimed_count = 5;
   uint32 total_score = 6;
 }
+
+message PingMessage {
+  int64 timestamp = 1;
+}
+
+message PongMessage {
+  int64 timestamp = 1;
+}

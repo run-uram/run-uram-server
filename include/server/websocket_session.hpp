@@ -121,7 +121,12 @@ public:
         auto self = this->shared_from_this();
 
         m_ws.binary(true);
-        m_ws.set_option(websocket::stream_base::timeout::suggested(beast::role_type::server));
+        websocket::stream_base::timeout opt{
+            std::chrono::seconds(30),       // handshake_timeout
+            websocket::stream_base::none(), // idle_timeout disabled (prevents 30s disconnect)
+            false                           // keep_alive_pings
+        };
+        m_ws.set_option(opt);
 
         sys::error_code ec;
         co_await m_ws.async_accept(request, net::redirect_error(net::use_awaitable, ec));
@@ -192,8 +197,8 @@ public:
         return m_subscribed_zones;
     }
 
-    uint64_t GetActiveRunId() const noexcept { return m_active_run_id; }
-    void SetActiveRunId(uint64_t run_id) noexcept { m_active_run_id = run_id; }
+    uint64_t GetActiveRunId() const noexcept override { return m_active_run_id; }
+    void SetActiveRunId(uint64_t run_id) noexcept override { m_active_run_id = run_id; }
 };
 
 } // namespace server
