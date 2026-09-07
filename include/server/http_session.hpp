@@ -94,7 +94,7 @@ public:
 
         if constexpr (std::is_same_v<Stream, beast::ssl_stream<beast::tcp_stream>>)
         {
-            beast::get_lowest_layer(m_stream).expires_after(std::chrono::seconds(30));
+            beast::get_lowest_layer(m_stream).expires_after(std::chrono::seconds(15));
             co_await m_stream.async_handshake(ssl::stream_base::server, net::redirect_error(net::use_awaitable, ec));
             if (ec)
             {
@@ -106,7 +106,7 @@ public:
         for (;;)
         {
             m_request = {};
-            beast::get_lowest_layer(m_stream).expires_after(std::chrono::seconds(30));
+            beast::get_lowest_layer(m_stream).expires_after(std::chrono::seconds(15));
             co_await http::async_read(m_stream, m_buffer, m_request, net::redirect_error(net::use_awaitable, ec));
 
             if (ec == http::error::end_of_stream)

@@ -120,6 +120,8 @@ public:
     {
         auto self = this->shared_from_this();
 
+        beast::get_lowest_layer(m_ws).expires_never();
+
         m_ws.binary(true);
         websocket::stream_base::timeout opt{
             std::chrono::seconds(30),       // handshake_timeout
